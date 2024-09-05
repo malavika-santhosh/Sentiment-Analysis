@@ -1,0 +1,52 @@
+import pandas as pd                # For reading the Excel file and handling dataframes
+import re                          # For regular expressions, used in text preprocessing
+from nltk.tokenize import word_tokenize   # For tokenizing words in the text
+from nltk.corpus import stopwords  # For removing stopwords
+import matplotlib.pyplot as plt    # For plotting histograms
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer  # For sentiment analysis
+data = pd.read_excel('your_file')
+def preprocess_text(text):
+    text =  text.lower()
+    text = re.sub(r'[^\w\s#]', '',text)
+    tokens = word_tokenize(text)
+    stop_words = set(stopwords.words('english'))
+    filtered_tokens = [token for token in tokens if token not in stop_words]
+    preprocessed_text= " ".join(filtered_tokens)
+    return filtered_tokens
+    from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+analyzer =  SentimentIntensityAnalyzer()
+def get_vader_sentiment(text):
+    sentiment = analyzer.polarity_scores(text)
+    return sentiment
+senti_score = []
+for text in data['Opening Text']:
+    senti_score.append(get_vader_sentiment(text))
+data['vader_sentiment']=senti_score
+positive_reviews = []
+for i,sentiment in enumerate(data['vader_sentiment']):
+    if 'compound' in sentiment and sentiment['compound'] > 0.5:
+        positive_reviews.append({
+            "text":data["Opening Text"][i],
+            "compound":sentiment["compound"],
+            "pos":sentiment["pos"],
+            "neg":sentiment["neg"],
+            "neu":sentiment["neu"],
+        })
+for sentiment_index in range(len(data)):
+    sentiment = data.loc[sentiment_index,'vader_sentiment']
+    if 'compound' in sentiment and sentiment['compound'] > 0.5:
+        positive_reviews.append({
+            "text":data["Opening Text"][sentiment_index],
+            "compound":sentiment["compound"],
+            "pos":sentiment["pos"],
+            "neg":sentiment["neg"],
+            "neu":sentiment["neu"],
+        })
+average_compound_positive=sum(review['compound'] for review in positive_reviews if review["compound"]>0)/len(positive_reviews)
+print(f"Average compund score (Positive Reviews > 0.5):{average_compound_positive:.2f}")
+all_compound_scores = [score["compound"] for score in data['vader_sentiment']]
+plt.hist(all_compound_scores)
+plt.xlabel("compound sentiment scores")
+plt.ylabel("texts")
+plt.title("sentiment distribution")
+plt.show()
